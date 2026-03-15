@@ -3,7 +3,7 @@
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { useEffect, useState } from 'react';
 import { userService } from '../../../services/userService';
-import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaShieldAlt, FaEye, FaPencilAlt } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaToggleOn, FaToggleOff, FaShieldAlt, FaEye, FaEyeSlash, FaPencilAlt } from 'react-icons/fa';
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal';
 import toast from 'react-hot-toast';
 
@@ -36,6 +36,7 @@ export default function UsersManagement() {
     phone: '',
     role: 'viewer'
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     // Récupérer l'utilisateur connecté
@@ -392,14 +393,23 @@ export default function UsersManagement() {
                     <label className="block text-sm font-medium mb-2">
                       Mot de passe {editingUser && '(laisser vide pour ne pas changer)'}
                     </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      required={!editingUser}
-                      minLength="6"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary pr-10"
+                        required={!editingUser}
+                        minLength="6"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
                   </div>
 
                   <div>

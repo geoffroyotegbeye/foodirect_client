@@ -90,71 +90,116 @@ const TopList = () => {
         ))}
       </div>
 
-      {/* Liste du menu en lignes */}
-      <div className="max-w-5xl mx-auto space-y-4">
+      {/* Liste du menu */}
+      <div className="max-w-5xl mx-auto">
         {currentMenu.length === 0 ? (
           <div className="text-center py-10 text-gray-500">
             Aucun plat disponible dans cette catégorie
           </div>
         ) : (
-          currentMenu.map((item, index) => (
-            <div
-              key={item.id}
-              onClick={() => handleProductClick(item)}
-              className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden group border border-gray-100 cursor-pointer transform hover:-translate-y-1"
-            >
-              <div className="flex flex-col md:flex-row items-center gap-4 p-5">
-                {/* Image */}
-                <div className="flex-shrink-0 relative">
-                  <div className="relative">
+          <>
+            {/* Mobile : grille de cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
+              {currentMenu.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleProductClick(item)}
+                  className="bg-white rounded-2xl shadow-md overflow-hidden group cursor-pointer border border-gray-100 active:scale-95 transition-transform"
+                >
+                  {/* Image pleine largeur */}
+                  <div className="relative w-full h-44 overflow-hidden">
                     <Image
                       src={getImageUrl(item.image)}
                       alt={item.name}
-                      width={120}
-                      height={120}
-                      className="w-28 h-28 md:w-32 md:h-32 object-cover rounded-2xl shadow-lg group-hover:scale-105 transition-transform duration-700 ease-out"
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      sizes="50vw"
                     />
                     {item.featured === 1 && (
-                      <div className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
+                      <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow">
                         ⭐ Top
                       </div>
                     )}
                   </div>
-                </div>
-
-                {/* Nom et composition */}
-                <div className="flex-grow text-center md:text-left">
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
-                    {item.name}
-                  </h3>
-                  <p className="text-sm md:text-base text-gray-600 mb-2 leading-relaxed">
-                    {item.description}
-                  </p>
-                  {item.note && (
-                    <div className="inline-flex items-start gap-2 bg-blue-50 border-l-4 border-blue-400 px-3 py-2 rounded mt-2">
-                      <span className="text-blue-600 text-sm">ℹ️</span>
-                      <p className="text-xs text-blue-700 italic">
-                        {item.note}
+                  {/* Contenu */}
+                  <div className="p-3">
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2 group-hover:text-primary transition-colors">
+                      {item.name}
+                    </h3>
+                    <p className="text-xs text-gray-500 line-clamp-2 mb-2">
+                      {item.description}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-base font-bold text-primary">
+                        {parseFloat(item.price).toLocaleString()} <span className="text-xs font-normal text-gray-500">FCFA</span>
                       </p>
                     </div>
-                  )}
-                </div>
-
-                {/* Prix et bouton */}
-                <div className="flex-shrink-0 text-center md:text-right">
-                  <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 mb-3">
-                    <p className="text-3xl md:text-4xl font-bold text-primary whitespace-nowrap">
-                      {parseFloat(item.price).toLocaleString()}
-                    </p>
-                    <p className="text-sm text-gray-600 font-medium">FCFA</p>
+                    <button className="mt-2 w-full bg-primary text-white text-xs font-semibold py-1.5 rounded-lg">
+                      Voir
+                    </button>
                   </div>
-                  <button className="w-full bg-primary hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg text-sm">
-                    Voir les détails
-                  </button>
                 </div>
-              </div>
+              ))}
             </div>
-          ))
+
+            {/* Desktop : lignes */}
+            <div className="hidden md:block space-y-4">
+              {currentMenu.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleProductClick(item)}
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden group border border-gray-100 cursor-pointer transform hover:-translate-y-1"
+                >
+                  <div className="flex items-center gap-4 p-5">
+                    {/* Image */}
+                    <div className="flex-shrink-0 relative w-44 h-44 rounded-2xl overflow-hidden shadow-lg">
+                      <Image
+                        src={getImageUrl(item.image)}
+                        alt={item.name}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                        sizes="176px"
+                      />
+                      {item.featured === 1 && (
+                        <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
+                          ⭐ Top
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Nom et description */}
+                    <div className="flex-grow">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
+                        {item.name}
+                      </h3>
+                      <p className="text-base text-gray-600 mb-2 leading-relaxed">
+                        {item.description}
+                      </p>
+                      {item.note && (
+                        <div className="inline-flex items-start gap-2 bg-blue-50 border-l-4 border-blue-400 px-3 py-2 rounded mt-2">
+                          <span className="text-blue-600 text-sm">ℹ️</span>
+                          <p className="text-xs text-blue-700 italic">{item.note}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Prix et bouton */}
+                    <div className="flex-shrink-0 text-right">
+                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 mb-3">
+                        <p className="text-4xl font-bold text-primary whitespace-nowrap">
+                          {parseFloat(item.price).toLocaleString()}
+                        </p>
+                        <p className="text-sm text-gray-600 font-medium">FCFA</p>
+                      </div>
+                      <button className="w-full bg-primary hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md text-sm">
+                        Voir les détails
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
