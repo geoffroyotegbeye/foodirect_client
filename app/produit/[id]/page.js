@@ -5,230 +5,224 @@ import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FaStar, FaShoppingCart, FaMinus, FaPlus, FaArrowLeft } from 'react-icons/fa';
 import { menuService } from '../../../services/menuService';
+import { accompanimentService } from '../../../services/accompanimentService';
 import { getImageUrl } from '../../../lib/imageHelper';
+import { useCart } from '../../../context/CartContext';
+import Navbar from '../../../components/Navbar/Navbar';
+import Footer from '../../../components/Footer/Footer';
+
+const CATEGORY_LABELS = { plat: 'Plat Principal', boisson: 'Boisson', dessert: 'Dessert', extra: 'Extra' };
+const CATEGORY_ICONS  = { plat: '🍽️', boisson: '🥤', dessert: '🍰', extra: '🍟' };
+
+function ItemCard({ item, getQty, addItem, updateQty }) {
+  const qty = getQty(item.id);
+  return (
+    <div className="bg-white rounded-2xl shadow-md overflow-hidden border border-gray-100">
+      <div className="relative h-32 w-full">
+        <Image src={getImageUrl(item.image)} alt={item.name} fill className="object-cover" sizes="25vw" />
+      </div>
+      <div className="p-3">
+        <p className="font-semibold text-sm text-gray-900 line-clamp-1">{item.name}</p>
+        <p className="text-primary font-bold text-sm mb-2">{parseFloat(item.price).toLocaleString()} FCFA</p>
+        {qty === 0 ? (
+          <button onClick={() => addItem(item)} className="w-full bg-primary text-white text-xs font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1">
+            <FaPlus className="text-xs" /> Ajouter
+          </button>
+        ) : (
+          <div className="flex items-center justify-between bg-orange-50 border border-primary rounded-lg px-2 py-1">
+            <button onClick={() => updateQty(item.id, qty - 1)} className="text-primary font-bold"><FaMinus className="text-xs" /></button>
+            <span className="font-bold text-primary text-sm">{qty}</span>
+            <button onClick={() => addItem(item)} className="text-primary font-bold"><FaPlus className="text-xs" /></button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
+  const { addItem, updateQty, getQty } = useCart();
+
   const [product, setProduct] = useState(null);
-  const [quantity, setQuantity] = useState(1);
+  const [accompaniments, setAccompaniments] = useState([]);
+  const [extras, setExtras] = useState({ boisson: [], dessert: [], extra: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadProduct = async () => {
+    const load = async () => {
       try {
-        const response = await menuService.getMenuById(params.id);
-        if (response.success && response.data) {
-          setProduct(response.data);
+        const res = await menuService.getMenuById(params.id);
+        if (res.success && res.data) {
+          setProduct(res.data);
+          const [accRes, menuRes] = await Promise.all([
+            accompanimentService.getByMenu(res.data.id),
+            menuService.getAvailableMenu(100)
+          ]);
+          setAccompaniments(accRes.data || []);
+          const items = menuRes.data || [];
+          setExtras({
+            boisson: items.filter(i => i.category === 'boisson'),
+            dessert: items.filter(i => i.category === 'dessert'),
+            extra:   items.filter(i => i.category === 'extra'),
+          });
         }
-      } catch (error) {
-        console.error('Erreur chargement produit:', error);
+      } catch (e) {
+        console.error(e);
       } finally {
         setLoading(false);
       }
     };
-
-    if (params.id) {
-      loadProduct();
-    }
+    if (params.id) load();
   }, [params.id]);
 
-  const handleQuantityChange = (delta) => {
-    const newQuantity = quantity + delta;
-    if (newQuantity >= 1 && newQuantity <= 99) {
-      setQuantity(newQuantity);
-    }
-  };
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+  );
 
-  const getCategoryLabel = (category) => {
-    const labels = {
-      'plat': 'Plat Principal',
-      'boisson': 'Boisson',
-      'dessert': 'Dessert',
-      'extra': 'Extra'
-    };
-    return labels[category] || category;
-  };
-
-  const getCategoryIcon = (category) => {
-    const icons = {
-      'plat': '🍽️',
-      'boisson': '🥤',
-      'dessert': '🍰',
-      'extra': '🍟'
-    };
-    return icons[category] || '🍴';
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  if (!product) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">Produit non trouvé</h1>
+        <button onClick={() => router.push('/')} className="bg-primary text-white px-6 py-3 rounded-lg">
+          Retour à l&apos;accueil
+        </button>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (!product) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Produit non trouvé</h1>
-          <button
-            onClick={() => router.push('/')}
-            className="bg-primary hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition"
-          >
-            Retour à l&apos;accueil
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const totalPrice = parseFloat(product.price) * quantity;
+  const qty = getQty(product.id);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        {/* Bouton retour */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-gray-600 hover:text-primary mb-6 transition"
-        >
-          <FaArrowLeft />
-          <span>Retour</span>
-        </button>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
 
-        {/* Contenu produit */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8 p-6 md:p-10">
-            {/* Colonne gauche - Image */}
-            <div className="space-y-4">
-              <div className="relative rounded-2xl overflow-hidden shadow-xl">
+      <main className="flex-1 pt-20 pb-10">
+        <div className="container mx-auto px-4">
+
+          {/* Retour */}
+          <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-primary mb-6 transition">
+            <FaArrowLeft /><span>Retour</span>
+          </button>
+
+          {/* Fiche produit */}
+          <div className="bg-white rounded-2xl shadow-xl overflow-hidden max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-0">
+
+              {/* Image */}
+              <div className="relative h-72 md:h-full min-h-[320px]">
                 <Image
                   src={getImageUrl(product.image)}
                   alt={product.name}
-                  width={600}
-                  height={600}
-                  className="w-full h-auto object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 {product.featured === 1 && (
                   <div className="absolute top-4 left-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                    <FaStar className="animate-pulse" />
-                    <span>Menu du Jour</span>
+                    <FaStar className="animate-pulse" /><span>Menu du Jour</span>
                   </div>
                 )}
               </div>
 
-              {/* Étoiles */}
-              <div className="flex items-center justify-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <FaStar key={i} className="text-yellow-400 text-xl" />
-                ))}
-                <span className="ml-2 text-gray-600 text-sm">(5.0)</span>
-              </div>
-            </div>
+              {/* Détails */}
+              <div className="p-6 md:p-8 flex flex-col">
+                <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-semibold mb-3 self-start">
+                  <span>{CATEGORY_ICONS[product.category]}</span>
+                  <span>{CATEGORY_LABELS[product.category]}</span>
+                </div>
 
-            {/* Colonne droite - Détails */}
-            <div className="flex flex-col">
-              {/* Catégorie */}
-              <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-full text-sm font-semibold mb-4 self-start">
-                <span>{getCategoryIcon(product.category)}</span>
-                <span>{getCategoryLabel(product.category)}</span>
-              </div>
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">{product.name}</h1>
 
-              {/* Nom */}
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-                {product.name}
-              </h1>
+                <div className="flex gap-1 mb-3">
+                  {[...Array(5)].map((_, i) => <FaStar key={i} className="text-yellow-400" />)}
+                </div>
 
-              {/* Description */}
-              <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                {product.description}
-              </p>
+                <p className="text-gray-600 leading-relaxed mb-4">{product.description}</p>
 
-              {/* Note spéciale */}
-              {product.note && (
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg mb-6">
-                  <div className="flex items-start gap-3">
-                    <span className="text-blue-600 text-xl">ℹ️</span>
-                    <div>
-                      <p className="text-sm font-semibold text-blue-900 mb-1">Information importante</p>
-                      <p className="text-sm text-blue-700">{product.note}</p>
-                    </div>
+                {product.note && (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-lg mb-4 text-sm text-blue-700">
+                    ℹ️ {product.note}
                   </div>
+                )}
+
+                <div className="bg-orange-50 rounded-xl p-4 mb-6">
+                  <p className="text-3xl font-bold text-primary">
+                    {parseFloat(product.price).toLocaleString()} <span className="text-base font-normal text-gray-500">FCFA</span>
+                  </p>
                 </div>
-              )}
 
-              {/* Prix */}
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 mb-6">
-                <p className="text-sm text-gray-600 mb-1">Prix unitaire</p>
-                <p className="text-4xl md:text-5xl font-bold text-primary">
-                  {parseFloat(product.price).toLocaleString()} <span className="text-2xl">FCFA</span>
-                </p>
-              </div>
-
-              {/* Sélecteur de quantité */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Quantité
-                </label>
-                <div className="flex items-center gap-4">
+                {/* Bouton panier */}
+                {qty === 0 ? (
                   <button
-                    onClick={() => handleQuantityChange(-1)}
-                    disabled={quantity <= 1}
-                    className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 rounded-full p-3 transition-all duration-300 hover:scale-110"
+                    onClick={() => addItem(product)}
+                    className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2 text-lg"
                   >
-                    <FaMinus />
+                    <FaShoppingCart /> Ajouter au panier
                   </button>
-                  <span className="text-3xl font-bold text-gray-900 min-w-[60px] text-center">
-                    {quantity}
-                  </span>
-                  <button
-                    onClick={() => handleQuantityChange(1)}
-                    disabled={quantity >= 99}
-                    className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 rounded-full p-3 transition-all duration-300 hover:scale-110"
-                  >
-                    <FaPlus />
-                  </button>
-                </div>
-              </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-orange-50 border-2 border-primary rounded-xl px-6 py-3">
+                    <button onClick={() => updateQty(product.id, qty - 1)} className="text-primary font-bold text-xl"><FaMinus /></button>
+                    <span className="font-bold text-primary text-2xl">{qty}</span>
+                    <button onClick={() => addItem(product)} className="text-primary font-bold text-xl"><FaPlus /></button>
+                  </div>
+                )}
 
-              {/* Total */}
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold text-gray-700">Total</span>
-                  <span className="text-3xl font-bold text-primary">
-                    {totalPrice.toLocaleString()} FCFA
-                  </span>
-                </div>
-              </div>
-
-              {/* Boutons d'action */}
-              <div className="space-y-3">
-                <button className="w-full bg-primary hover:bg-orange-600 text-white font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center gap-3 text-lg">
-                  <FaShoppingCart />
-                  <span>Ajouter au panier</span>
-                </button>
-                <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl text-lg">
-                  Commander maintenant
-                </button>
-              </div>
-
-              {/* Info livraison */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <span>🚚</span>
-                  <span>Livraison rapide à Ganhi et environs</span>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600 mt-2">
-                  <span>📞</span>
-                  <span>Appelez-nous: +229 01 91 26 04 34</span>
+                <div className="mt-4 pt-4 border-t border-gray-100 space-y-1 text-sm text-gray-500">
+                  <p>🚚 Livraison rapide à Ganhi et environs</p>
+                  <p>📞 +229 01 60 55 76 23</p>
                 </div>
               </div>
             </div>
           </div>
+
+          {/* Accompagnements */}
+          {accompaniments.length > 0 && (
+            <div className="max-w-5xl mx-auto mt-10">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🍹 Accompagnements suggérés</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {accompaniments.map(item => <ItemCard key={item.id} item={item} getQty={getQty} addItem={addItem} updateQty={updateQty} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Boissons */}
+          {extras.boisson.length > 0 && (
+            <div className="max-w-5xl mx-auto mt-10">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🥤 Boissons</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {extras.boisson.map(item => <ItemCard key={item.id} item={item} getQty={getQty} addItem={addItem} updateQty={updateQty} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Desserts */}
+          {extras.dessert.length > 0 && (
+            <div className="max-w-5xl mx-auto mt-10">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🍰 Desserts</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {extras.dessert.map(item => <ItemCard key={item.id} item={item} getQty={getQty} addItem={addItem} updateQty={updateQty} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Extras */}
+          {extras.extra.length > 0 && (
+            <div className="max-w-5xl mx-auto mt-10">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">🍟 Extras</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {extras.extra.map(item => <ItemCard key={item.id} item={item} getQty={getQty} addItem={addItem} updateQty={updateQty} />)}
+              </div>
+            </div>
+          )}
+
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

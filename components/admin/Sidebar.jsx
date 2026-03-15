@@ -10,7 +10,8 @@ import {
   FaChartBar, 
   FaCog,
   FaSignOutAlt,
-  FaTimes
+  FaTimes,
+  FaPlusCircle
 } from 'react-icons/fa';
 
 const Sidebar = ({ user, onLogout, onClose }) => {
@@ -20,6 +21,7 @@ const Sidebar = ({ user, onLogout, onClose }) => {
   const menuItems = [
     { name: 'Dashboard', path: '/admin', icon: FaHome },
     { name: 'Menu', path: '/admin/menu', icon: FaUtensils },
+    { name: 'Accompagnements', path: '/admin/accompaniments', icon: FaPlusCircle },
     { name: 'Commandes', path: '/admin/orders', icon: FaShoppingCart },
     { name: 'Utilisateurs', path: '/admin/users', icon: FaUsers },
     { name: 'Statistiques', path: '/admin/stats', icon: FaChartBar },

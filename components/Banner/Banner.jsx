@@ -1,47 +1,39 @@
 'use client'
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import SectionTitle from "../SectionTitle/SectionTitle";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { getSettings } from "../../services/settingsService";
+import { getImageUrl } from "../../lib/imageHelper";
 
 gsap.registerPlugin(ScrollTrigger);
 
 const Banner = () => {
   const imageRef = useRef(null);
   const textRef = useRef(null);
+  const [aboutImage, setAboutImage] = useState('/assets/2.png');
+
+  useEffect(() => {
+    getSettings()
+      .then(s => { if (s?.about_image) setAboutImage(s.about_image); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     gsap.fromTo(
       imageRef.current,
       { opacity: 0, x: -50 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 1.2,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: imageRef.current,
-          start: "top 80%",
-          toggleActions: "play none none reverse"
-        }
+      { opacity: 1, x: 0, duration: 1.2, ease: "power2.out",
+        scrollTrigger: { trigger: imageRef.current, start: "top 80%", toggleActions: "play none none reverse" }
       }
     );
-
     gsap.fromTo(
       textRef.current,
       { opacity: 0, x: 50 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 1.2,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: textRef.current,
-          start: "top 80%",
-          toggleActions: "play none none reverse"
-        }
+      { opacity: 1, x: 0, duration: 1.2, ease: "power2.out",
+        scrollTrigger: { trigger: textRef.current, start: "top 80%", toggleActions: "play none none reverse" }
       }
     );
   }, []);
@@ -49,20 +41,17 @@ const Banner = () => {
   return (
     <>
       <div id="apropos" className="container py-10 md:py-14 px-4">
-        <SectionTitle
-          title="À Propos"
-          subtitle="Une cuisine propre et authentique"
-        />
+        <SectionTitle title="À Propos" subtitle="Une cuisine propre et authentique" />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center">
           {/* img section */}
-          <div ref={imageRef} className="flex justify-center items-center order-2 md:order-1">
+          <div ref={imageRef} className="flex justify-center items-center order-2 md:order-1 max-h-[320px] overflow-hidden rounded-3xl">
             <Image
-              src="/assets/2.png"
+              src={getImageUrl(aboutImage)}
               alt="FOODIRECT Restaurant"
               width={500}
               height={500}
-              className="w-full max-w-[300px] md:max-w-full rounded-3xl shadow-2xl"
+              className="w-full max-w-[260px] md:max-w-[380px] rounded-3xl shadow-2xl object-cover"
             />
           </div>
           {/* text section */}

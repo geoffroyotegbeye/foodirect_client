@@ -6,9 +6,12 @@ import { useRouter } from 'next/navigation';
 import SectionTitle from '../SectionTitle/SectionTitle';
 import { menuService } from '../../services/menuService';
 import { getImageUrl } from '../../lib/imageHelper';
+import { useCart } from '../../context/CartContext';
+import { FaPlus, FaMinus } from 'react-icons/fa';
 
 const MenuDuJour = () => {
   const router = useRouter();
+  const { addItem, updateQty, getQty } = useCart();
   const [platsDuJour, setPlatsDuJour] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -117,9 +120,20 @@ const MenuDuJour = () => {
                 </div>
 
                 {/* Bouton Commander */}
-                <button className="mt-4 w-full bg-primary hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform group-hover:scale-105 shadow-md hover:shadow-lg">
-                  Voir les détails
-                </button>
+                {getQty(plat.id) === 0 ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); addItem(plat); }}
+                    className="mt-4 w-full bg-primary hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <FaPlus /> Ajouter au panier
+                  </button>
+                ) : (
+                  <div className="mt-4 flex items-center justify-between bg-orange-50 border-2 border-primary rounded-lg px-4 py-2">
+                    <button onClick={(e) => { e.stopPropagation(); updateQty(plat.id, getQty(plat.id) - 1); }} className="text-primary font-bold text-lg"><FaMinus /></button>
+                    <span className="font-bold text-primary text-xl">{getQty(plat.id)}</span>
+                    <button onClick={(e) => { e.stopPropagation(); addItem(plat); }} className="text-primary font-bold text-lg"><FaPlus /></button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

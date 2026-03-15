@@ -6,9 +6,12 @@ import { useRouter } from "next/navigation";
 import SectionTitle from "../SectionTitle/SectionTitle";
 import { menuService } from "../../services/menuService";
 import { getImageUrl } from "../../lib/imageHelper";
+import { useCart } from "../../context/CartContext";
+import { FaPlus, FaMinus } from "react-icons/fa";
 
 const TopList = () => {
   const router = useRouter();
+  const { addItem, updateQty, getQty } = useCart();
   const [activeCategory, setActiveCategory] = useState('plat');
   const [allMenuItems, setAllMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +94,7 @@ const TopList = () => {
       </div>
 
       {/* Liste du menu */}
-      <div className="max-w-5xl mx-auto">
+      <div>
         {currentMenu.length === 0 ? (
           <div className="text-center py-10 text-gray-500">
             Aucun plat disponible dans cette catégorie
@@ -134,66 +137,78 @@ const TopList = () => {
                         {parseFloat(item.price).toLocaleString()} <span className="text-xs font-normal text-gray-500">FCFA</span>
                       </p>
                     </div>
-                    <button className="mt-2 w-full bg-primary text-white text-xs font-semibold py-1.5 rounded-lg">
-                      Voir
-                    </button>
+                    {getQty(item.id) === 0 ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addItem(item); }}
+                        className="mt-2 w-full bg-primary text-white text-xs font-semibold py-1.5 rounded-lg flex items-center justify-center gap-1"
+                      >
+                        <FaPlus className="text-xs" /> Ajouter
+                      </button>
+                    ) : (
+                      <div className="mt-2 flex items-center justify-between bg-orange-50 rounded-lg px-2 py-1">
+                        <button onClick={(e) => { e.stopPropagation(); updateQty(item.id, getQty(item.id) - 1); }} className="text-primary font-bold p-1"><FaMinus className="text-xs" /></button>
+                        <span className="font-bold text-primary">{getQty(item.id)}</span>
+                        <button onClick={(e) => { e.stopPropagation(); addItem(item); }} className="text-primary font-bold p-1"><FaPlus className="text-xs" /></button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Desktop : lignes */}
-            <div className="hidden md:block space-y-4">
+            {/* Desktop : grille 2 colonnes */}
+            <div className="hidden md:grid md:grid-cols-2 gap-4">
               {currentMenu.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => handleProductClick(item)}
-                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-500 overflow-hidden group border border-gray-100 cursor-pointer transform hover:-translate-y-1"
+                  className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group border border-gray-100 cursor-pointer hover:-translate-y-1"
                 >
-                  <div className="flex items-center gap-4 p-5">
+                  <div className="flex items-center gap-3 p-4">
                     {/* Image */}
-                    <div className="flex-shrink-0 relative w-44 h-44 rounded-2xl overflow-hidden shadow-lg">
+                    <div className="flex-shrink-0 relative w-28 h-28 rounded-xl overflow-hidden shadow">
                       <Image
                         src={getImageUrl(item.image)}
                         alt={item.name}
                         fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                        sizes="176px"
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                        sizes="112px"
                       />
                       {item.featured === 1 && (
-                        <div className="absolute top-2 left-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
+                        <div className="absolute top-1.5 left-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow">
                           ⭐ Top
                         </div>
                       )}
                     </div>
 
-                    {/* Nom et description */}
-                    <div className="flex-grow">
-                      <h3 className="text-2xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
+                    {/* Infos */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-bold text-gray-900 mb-1 group-hover:text-primary transition-colors line-clamp-1">
                         {item.name}
                       </h3>
-                      <p className="text-base text-gray-600 mb-2 leading-relaxed">
-                        {item.description}
-                      </p>
+                      <p className="text-xs text-gray-500 line-clamp-2 mb-2">{item.description}</p>
                       {item.note && (
-                        <div className="inline-flex items-start gap-2 bg-blue-50 border-l-4 border-blue-400 px-3 py-2 rounded mt-2">
-                          <span className="text-blue-600 text-sm">ℹ️</span>
-                          <p className="text-xs text-blue-700 italic">{item.note}</p>
-                        </div>
+                        <p className="text-xs text-blue-600 italic line-clamp-1">ℹ️ {item.note}</p>
                       )}
-                    </div>
-
-                    {/* Prix et bouton */}
-                    <div className="flex-shrink-0 text-right">
-                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 mb-3">
-                        <p className="text-4xl font-bold text-primary whitespace-nowrap">
-                          {parseFloat(item.price).toLocaleString()}
+                      <div className="flex items-center justify-between mt-2">
+                        <p className="text-lg font-bold text-primary">
+                          {parseFloat(item.price).toLocaleString()} <span className="text-xs font-normal text-gray-500">FCFA</span>
                         </p>
-                        <p className="text-sm text-gray-600 font-medium">FCFA</p>
+                        {getQty(item.id) === 0 ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); addItem(item); }}
+                            className="bg-primary hover:bg-orange-600 text-white text-xs font-semibold py-1.5 px-3 rounded-lg flex items-center gap-1 transition"
+                          >
+                            <FaPlus className="text-xs" /> Ajouter
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 bg-orange-50 border border-primary rounded-lg px-2 py-1">
+                            <button onClick={(e) => { e.stopPropagation(); updateQty(item.id, getQty(item.id) - 1); }} className="text-primary font-bold"><FaMinus className="text-xs" /></button>
+                            <span className="font-bold text-primary text-sm">{getQty(item.id)}</span>
+                            <button onClick={(e) => { e.stopPropagation(); addItem(item); }} className="text-primary font-bold"><FaPlus className="text-xs" /></button>
+                          </div>
+                        )}
                       </div>
-                      <button className="w-full bg-primary hover:bg-orange-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md text-sm">
-                        Voir les détails
-                      </button>
                     </div>
                   </div>
                 </div>

@@ -3,13 +3,15 @@
 import AdminLayout from '../../../components/admin/AdminLayout';
 import { useEffect, useState } from 'react';
 import { menuService } from '../../../services/menuService';
-import { FaPlus, FaEdit, FaTrash, FaStar } from 'react-icons/fa';
+import { accompanimentService } from '../../../services/accompanimentService';
+import { FaPlus, FaEdit, FaTrash, FaStar, FaList, FaTh, FaToggleOn, FaToggleOff } from 'react-icons/fa';
 import Image from 'next/image';
 import { getImageUrl } from '../../../lib/imageHelper';
 import ConfirmModal from '../../../components/ConfirmModal/ConfirmModal';
 import toast from 'react-hot-toast';
 
 export default function MenuManagement() {
+  const [viewMode, setViewMode] = useState('card');
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -20,6 +22,10 @@ export default function MenuManagement() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [allAccompaniments, setAllAccompaniments] = useState([]);
+  const [selectedAccompaniments, setSelectedAccompaniments] = useState([]);
+  const [accompSearch, setAccompSearch] = useState('');
+  const [formStep, setFormStep] = useState(1);
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: 'danger',
@@ -29,7 +35,7 @@ export default function MenuManagement() {
   });
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 8,
     total: 0,
     totalPages: 0,
     hasNext: false,
@@ -47,12 +53,13 @@ export default function MenuManagement() {
 
   useEffect(() => {
     loadMenu();
+    accompanimentService.getAll().then(res => setAllAccompaniments(res.data || []));
   }, [currentPage]);
 
   const loadMenu = async () => {
     try {
       setLoading(true);
-      const data = await menuService.getAllMenu(currentPage, 10);
+      const data = await menuService.getAllMenu(currentPage, 8);
       console.log('📊 Données menu reçues:', data);
       
       if (data && data.data) {
@@ -80,26 +87,32 @@ export default function MenuManagement() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+    if (e && e.preventDefault) e.preventDefault();
     try {
       const dataToSend = { ...formData };
-      
-      // Ajouter le fichier image si présent
-      if (imageFile) {
-        dataToSend.image = imageFile;
-      }
-      
+      if (imageFile) dataToSend.image = imageFile;
+
+      let menuId;
       if (editingItem) {
         await menuService.updateMenu(editingItem.id, dataToSend);
+        menuId = editingItem.id;
         toast.success('Plat modifié avec succès!');
       } else {
-        await menuService.createMenu(dataToSend);
+        const res = await menuService.createMenu(dataToSend);
+        menuId = res.data?.id;
         toast.success('Plat ajouté avec succès!');
       }
-      
+
+      // Sauvegarder les accompagnements associés
+      if (menuId) {
+        await accompanimentService.setMenuAccompaniments(menuId, selectedAccompaniments);
+      }
+
       setShowModal(false);
       setEditingItem(null);
+      setSelectedAccompaniments([]);
+      setAccompSearch('');
+      setFormStep(1);
       resetForm();
       loadMenu();
     } catch (error) {
@@ -115,13 +128,18 @@ export default function MenuManagement() {
       description: item.description,
       price: item.price,
       category: item.category,
-      featured: item.featured,
-      available: item.available,
+      featured: !!item.featured,
+      available: !!item.available,
       note: item.note || ''
     });
     setImageFile(null);
     setImagePreview(item.image ? getImageUrl(item.image) : null);
     setShowPreview(false);
+    setFormStep(1);
+    // Charger les accompagnements associés
+    accompanimentService.getByMenu(item.id).then(res => {
+      setSelectedAccompaniments((res.data || []).map(a => a.id));
+    });
     setShowModal(true);
   };
 
@@ -274,25 +292,44 @@ export default function MenuManagement() {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Gestion du Menu</h1>
-            {selectedItems.length > 0 && (
+            {selectedItems.length > 0 ? (
               <p className="text-sm text-gray-600 mt-1">
                 {selectedItems.length} sélectionné(s)
               </p>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-2">
-            {selectedItems.length > 0 && (
+            {selectedItems.length > 0 ? (
               <button
                 onClick={handleDeleteSelected}
                 className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition text-sm"
               >
                 <FaTrash /> Supprimer ({selectedItems.length})
               </button>
-            )}
+            ) : null}
+            {/* Toggle vue */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('card')}
+                className={`p-2 rounded-md transition ${viewMode === 'card' ? 'bg-white shadow text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+                title="Vue carte"
+              >
+                <FaTh />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition ${viewMode === 'list' ? 'bg-white shadow text-primary' : 'text-gray-400 hover:text-gray-600'}`}
+                title="Vue liste"
+              >
+                <FaList />
+              </button>
+            </div>
             <button
               onClick={() => {
                 setEditingItem(null);
                 resetForm();
+                setSelectedAccompaniments([]);
+                setFormStep(1);
                 setShowModal(true);
               }}
               className="bg-primary hover:bg-orange-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition text-sm"
@@ -302,7 +339,51 @@ export default function MenuManagement() {
           </div>
         </div>
 
-        {/* Liste des plats - Desktop */}
+        {/* Vue carte */}
+        {viewMode === 'card' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {menuItems.map(item => (
+              <div key={item.id} className={`bg-white rounded-xl shadow overflow-hidden border border-gray-100 hover:shadow-md transition group ${selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''}`}>
+                <div className="relative h-40 w-full overflow-hidden">
+                  <Image src={getImageUrl(item.image)} alt={item.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="25vw" />
+                  <div className="absolute top-2 left-2">
+                    <input type="checkbox" checked={selectedItems.includes(item.id)} onChange={() => handleSelectItem(item.id)} className="w-4 h-4 text-primary rounded cursor-pointer" />
+                  </div>
+                  <div className="absolute top-2 right-2 flex gap-1">
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${item.available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {item.available ? 'Dispo' : 'Indispo'}
+                    </span>
+                  </div>
+                  {item.featured && (
+                    <div className="absolute bottom-2 left-2">
+                      <FaStar className="text-yellow-400 text-lg drop-shadow" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-3">
+                  <p className="font-semibold text-gray-900 truncate">{item.name}</p>
+                  <p className="text-xs text-gray-400">{getCategoryLabel(item.category)}</p>
+                  <p className="text-primary font-bold text-sm mt-0.5">{parseFloat(item.price).toLocaleString()} FCFA</p>
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => handleToggleFeatured(item)} title={item.featured ? 'Retirer du menu du jour' : 'Ajouter au menu du jour'}>
+                      <FaStar className={`text-xl ${item.featured ? 'text-yellow-500' : 'text-gray-300'}`} />
+                    </button>
+                    <button onClick={() => handleEdit(item)} className="flex-1 flex items-center justify-center gap-1 text-blue-600 hover:bg-blue-50 border border-blue-200 rounded-lg py-1.5 text-xs transition">
+                      <FaEdit /> Modifier
+                    </button>
+                    <button onClick={() => handleDelete(item.id)} className="flex-1 flex items-center justify-center gap-1 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg py-1.5 text-xs transition">
+                      <FaTrash /> Supprimer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Vue liste - Desktop */}
+        {viewMode === 'list' && (
+          <>
         <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
@@ -389,7 +470,7 @@ export default function MenuManagement() {
 
         {/* Liste des plats - Mobile (Cards) */}
         <div className="md:hidden space-y-4">
-          {selectedItems.length > 0 && (
+          {selectedItems.length > 0 ? (
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg flex justify-between items-center">
               <span className="text-blue-700 font-medium">
                 {selectedItems.length} sélectionné(s)
@@ -401,7 +482,7 @@ export default function MenuManagement() {
                 <FaTrash /> Supprimer
               </button>
             </div>
-          )}
+          ) : null}
           
           {menuItems.map((item) => (
             <div
@@ -473,9 +554,11 @@ export default function MenuManagement() {
             </div>
           ))}
         </div>
+        </>
+        )}
 
         {/* Pagination */}
-        {pagination.total > 10 && (
+        {pagination.total > 8 && (
           <div className="mt-3 bg-white p-3 rounded-lg shadow">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-gray-600">
@@ -661,144 +744,186 @@ export default function MenuManagement() {
         {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-6">
-                  {editingItem ? 'Modifier le plat' : 'Ajouter un plat'}
-                </h2>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nom du plat</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      required
-                    />
-                  </div>
+            <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col">
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Description</label>
-                    <textarea
-                      value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      rows="3"
-                      required
-                    />
+              {/* Header fixe */}
+              <div className="px-6 pt-5 pb-4 border-b flex-shrink-0">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold">{editingItem ? 'Modifier le plat' : 'Ajouter un plat'}</h2>
+                  <button type="button" onClick={() => { setShowModal(false); setEditingItem(null); setAccompSearch(''); setFormStep(1); resetForm(); }} className="text-gray-400 hover:text-gray-700 text-xl">✕</button>
+                </div>
+                {/* Stepper */}
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 flex-1`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      formStep === 1 ? 'bg-primary text-white' : 'bg-green-500 text-white'
+                    }`}>
+                      {formStep > 1 ? '✓' : '1'}
+                    </div>
+                    <span className={`text-sm font-medium ${formStep === 1 ? 'text-gray-900' : 'text-gray-400'}`}>Informations</span>
                   </div>
+                  <div className="flex-1 h-px bg-gray-200"></div>
+                  <div className={`flex items-center gap-2 flex-1 justify-end`}>
+                    <span className={`text-sm font-medium ${formStep === 2 ? 'text-gray-900' : 'text-gray-400'}`}>Accompagnements</span>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      formStep === 2 ? 'bg-primary text-white' : 'bg-gray-200 text-gray-400'
+                    }`}>2</div>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+              {/* Contenu scrollable */}
+              <div className="overflow-y-auto flex-1 px-6 py-4">
+
+                {/* Étape 1 */}
+                {formStep === 1 && (
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Prix (FCFA)</label>
-                      <input
-                        type="number"
-                        value={formData.price}
-                        onChange={(e) => setFormData({...formData, price: e.target.value})}
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                        required
-                      />
+                      <label className="block text-sm font-medium mb-1">Nom du plat *</label>
+                      <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                        className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" required />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Catégorie</label>
-                      <select
-                        value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      >
-                        <option value="plat">Plat</option>
-                        <option value="boisson">Boisson</option>
-                        <option value="dessert">Dessert</option>
-                        <option value="extra">Extra</option>
-                      </select>
+                      <label className="block text-sm font-medium mb-1">Description *</label>
+                      <textarea value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
+                        className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" rows="3" required />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Image du plat</label>
-                    <div className="space-y-3">
-                      {/* Preview de l'image */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Prix (FCFA) *</label>
+                        <input type="number" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})}
+                          className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1">Catégorie</label>
+                        <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}
+                          className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none">
+                          <option value="plat">Plat</option>
+                          <option value="boisson">Boisson</option>
+                          <option value="dessert">Dessert</option>
+                          <option value="extra">Extra</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Image</label>
                       {imagePreview && (
-                        <div className="relative w-32 h-32 mx-auto">
-                          <Image
-                            src={imagePreview}
-                            alt="Preview"
-                            width={128}
-                            height={128}
-                            className="w-full h-full object-cover rounded-lg border-2 border-gray-300"
-                          />
+                        <div className="relative w-28 h-28 mx-auto mb-2">
+                          <Image src={imagePreview} alt="Preview" width={112} height={112} className="w-full h-full object-cover rounded-lg border-2 border-gray-200" />
                         </div>
                       )}
-                      
-                      {/* Input file */}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-orange-600 file:cursor-pointer"
-                      />
-                      <p className="text-xs text-gray-500">
-                        Formats acceptés: JPG, PNG, GIF, WEBP (max 5MB)
-                      </p>
+                      <input type="file" accept="image/*" onChange={handleImageChange}
+                        className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-orange-600 file:cursor-pointer" />
+                      <p className="text-xs text-gray-400 mt-1">JPG, PNG, WEBP — max 5MB</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Note (optionnel)</label>
+                      <input type="text" value={formData.note} onChange={e => setFormData({...formData, note: e.target.value})}
+                        className="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                        placeholder="Ex: Le plat avec le tilapia est à partir de 3500" />
+                    </div>
+
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={formData.featured} onChange={e => setFormData({...formData, featured: e.target.checked})} className="w-4 h-4" />
+                        <span className="text-sm">Plat en vedette</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" checked={formData.available} onChange={e => setFormData({...formData, available: e.target.checked})} className="w-4 h-4" />
+                        <span className="text-sm">Disponible</span>
+                      </label>
                     </div>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Note (optionnel)</label>
-                    <input
-                      type="text"
-                      value={formData.note}
-                      onChange={(e) => setFormData({...formData, note: e.target.value})}
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-                      placeholder="Ex: Le plat avec le tilapia est à partir de 3500"
-                    />
+                {/* Étape 2 */}
+                {formStep === 2 && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-500">Sélectionnez les accompagnements à proposer avec ce plat.</p>
+
+                    {/* Tags sélectionnés */}
+                    {selectedAccompaniments.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedAccompaniments.map(id => {
+                          const a = allAccompaniments.find(x => x.id === id);
+                          if (!a) return null;
+                          return (
+                            <span key={id} className="inline-flex items-center gap-1 bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full">
+                              {a.name}
+                              <button type="button" onClick={() => setSelectedAccompaniments(prev => prev.filter(i => i !== id))} className="hover:text-red-500 transition">✕</button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Recherche */}
+                    <input type="text" value={accompSearch} onChange={e => setAccompSearch(e.target.value)}
+                      placeholder="Rechercher..."
+                      className="w-full px-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none" />
+
+                    {/* Liste */}
+                    {allAccompaniments.length === 0 ? (
+                      <div className="text-center py-10 text-gray-400">
+                        <p className="text-3xl mb-2">🍹</p>
+                        <p className="text-sm">Aucun accompagnement créé</p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg overflow-hidden">
+                        <div className="divide-y divide-gray-100">
+                          {allAccompaniments.filter(a => a.name.toLowerCase().includes(accompSearch.toLowerCase())).map(a => (
+                            <label key={a.id} className={`flex items-center gap-3 px-3 py-3 cursor-pointer transition ${
+                              selectedAccompaniments.includes(a.id) ? 'bg-primary/5' : 'hover:bg-gray-50'
+                            }`}>
+                              <input type="checkbox" checked={selectedAccompaniments.includes(a.id)}
+                                onChange={() => setSelectedAccompaniments(prev =>
+                                  prev.includes(a.id) ? prev.filter(id => id !== a.id) : [...prev, a.id]
+                                )}
+                                className="w-4 h-4 accent-primary flex-shrink-0" />
+                              <span className="text-sm text-gray-800 flex-1">{a.name}</span>
+                              <span className="text-xs text-primary font-semibold">{parseFloat(a.price).toLocaleString()} F</span>
+                            </label>
+                          ))}
+                          {allAccompaniments.filter(a => a.name.toLowerCase().includes(accompSearch.toLowerCase())).length === 0 && (
+                            <p className="text-xs text-gray-400 text-center py-6">Aucun résultat</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
 
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.featured}
-                        onChange={(e) => setFormData({...formData, featured: e.target.checked})}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Plat en vedette</span>
-                    </label>
-
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={formData.available}
-                        onChange={(e) => setFormData({...formData, available: e.target.checked})}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">Disponible</span>
-                    </label>
-                  </div>
-
-                  <div className="flex gap-4 pt-4">
-                    <button
-                      type="submit"
-                      className="flex-1 bg-primary hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition"
-                    >
-                      {editingItem ? 'Modifier' : 'Ajouter'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowModal(false);
-                        setEditingItem(null);
-                        resetForm();
-                      }}
-                      className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-semibold transition"
-                    >
+              {/* Footer fixe */}
+              <div className="px-6 py-4 border-t flex-shrink-0 flex gap-3">
+                {formStep === 1 ? (
+                  <>
+                    <button type="button" onClick={() => { setShowModal(false); setEditingItem(null); setAccompSearch(''); setFormStep(1); resetForm(); }}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold transition text-sm">
                       Annuler
                     </button>
-                  </div>
-                </form>
+                    <button type="button"
+                      onClick={() => { if (!formData.name || !formData.description || !formData.price) { toast.error('Remplissez les champs obligatoires'); return; } setFormStep(2); }}
+                      className="flex-1 bg-primary hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition text-sm">
+                      Suivant →
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => setFormStep(1)}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 rounded-lg font-semibold transition text-sm">
+                      ← Retour
+                    </button>
+                    <button type="button" onClick={handleSubmit}
+                      className="flex-1 bg-primary hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition text-sm">
+                      {editingItem ? 'Modifier' : 'Créer'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

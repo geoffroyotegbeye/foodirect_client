@@ -33,7 +33,7 @@ const Footer = () => {
                 <FaInstagram />
               </a>
               <a 
-                href="https://wa.me/2290191260434" 
+                href="https://wa.me/22901160557623" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-2xl hover:text-primary transition duration-300"
@@ -59,10 +59,10 @@ const Footer = () => {
               <div className="flex items-center gap-3">
                 <FaPhone className="text-primary text-xl flex-shrink-0" />
                 <a 
-                  href="tel:+2290191260434" 
+                  href="tel:+22901160557623" 
                   className="text-sm md:text-base text-gray-300 hover:text-primary transition"
                 >
-                  +229 01 91 26 04 34
+                  +229 01 60 55 76 23
                 </a>
               </div>
             </div>

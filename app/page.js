@@ -27,7 +27,7 @@ export default function Home() {
     "description": "Restaurant de cuisine béninoise authentique à Ganhi, Cotonou",
     "image": "https://foodirect.netlify.app/assets/1.png",
     "url": "https://foodirect.netlify.app",
-    "telephone": "+2290191260434",
+    "telephone": "+22901160557623",
     "priceRange": "500-10000 FCFA",
     "servesCuisine": "Béninoise",
     "acceptsReservations": "True",
@@ -54,7 +54,7 @@ export default function Home() {
     ],
     "menu": "https://foodirect.netlify.app/#menu",
     "sameAs": [
-      "https://wa.me/2290191260434"
+      "https://wa.me/22901160557623"
     ]
   };
 
