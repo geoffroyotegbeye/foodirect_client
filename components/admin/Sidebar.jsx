@@ -39,7 +39,7 @@ const Sidebar = ({ user, onLogout, onClose }) => {
   };
 
   return (
-    <div className="h-screen w-64 bg-gray-900 text-white flex flex-col">
+    <div className="h-screen w-64 bg-gray-900 text-white flex flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       {/* Header avec bouton fermer (mobile) */}
       <div className="p-6 border-b border-gray-700 flex items-center justify-between">
         <div>
@@ -97,7 +97,7 @@ const Sidebar = ({ user, onLogout, onClose }) => {
         </div>
 
         {/* Bouton Déconnexion */}
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-6">
           <button
             onClick={onLogout}
             className="flex items-center justify-center gap-3 px-4 py-3 w-full bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium cursor-pointer"
