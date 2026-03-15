@@ -77,7 +77,7 @@ export default function ProductPage() {
             onClick={() => router.push('/')}
             className="bg-primary hover:bg-orange-600 text-white px-6 py-3 rounded-lg transition"
           >
-            Retour à l'accueil
+            Retour à l&apos;accueil
           </button>
         </div>
       </div>

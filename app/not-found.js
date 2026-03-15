@@ -14,7 +14,7 @@ export default function NotFound() {
           Page non trouvée
         </h2>
         <p className="text-gray-600 mb-8 max-w-md mx-auto">
-          Désolé, la page que vous recherchez n'existe pas ou a été déplacée.
+          Désolé, la page que vous recherchez n&apos;existe pas ou a été déplacée.
         </p>
         
         <div className="flex gap-4 justify-center">
