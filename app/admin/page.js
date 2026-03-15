@@ -22,22 +22,24 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      // Charger les commandes
+      // Charger les commandes (toutes)
       const ordersData = await orderService.getAllOrders();
       const orders = ordersData.data || [];
-      
-      // Charger le menu
-      const menuData = await menuService.getAllMenu();
-      const menuItems = menuData.data || [];
+
+      // Charger le menu avec une grande limite pour avoir le vrai total
+      const menuData = await menuService.getAllMenu(1, 1000);
+      const menuTotal = menuData.pagination?.total || menuData.data?.length || 0;
 
       // Calculer les statistiques
-      const totalRevenue = orders.reduce((sum, order) => sum + parseFloat(order.total_amount), 0);
+      const totalRevenue = orders
+        .filter(o => o.status !== 'annulee')
+        .reduce((sum, order) => sum + parseFloat(order.total_amount || 0), 0);
       const pendingOrders = orders.filter(o => o.status === 'en_attente').length;
 
       setStats({
         orders: orders.length,
         revenue: totalRevenue,
-        menuItems: menuItems.length,
+        menuItems: menuTotal,
         pendingOrders
       });
 

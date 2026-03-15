@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from './Sidebar';
-import { FaBars } from 'react-icons/fa';
+import { FaBars, FaSignOutAlt } from 'react-icons/fa';
 
 const AdminLayout = ({ children }) => {
   const router = useRouter();
@@ -91,7 +91,13 @@ const AdminLayout = ({ children }) => {
             <FaBars className="text-2xl" />
           </button>
           <h1 className="text-xl font-bold text-primary">FOODIRECT</h1>
-          <div className="w-10"></div> {/* Spacer for centering */}
+          <button
+            onClick={handleLogout}
+            className="text-red-500 hover:text-red-700 p-2"
+            title="Déconnexion"
+          >
+            <FaSignOutAlt className="text-2xl" />
+          </button>
         </header>
 
         {/* Content */}
